@@ -22,8 +22,11 @@ Other OS (windows, linux) should install from source found at http://nodejs.org
     # add a cronjob to periodically check
     crontab -e
 
-    # add this line (runs every 5 minutes)
-    */5 * * * * /usr/local/bin/node ~/path/to/reddit-rss-submit/index.js -u user -p pass
+    # add this line (runs every hour on hh:05)
+    5 * * * * /usr/local/bin/node ~/path/to/reddit-rss-submit/index.js -u user -p pass
+    
+    # use flock to skip runs where script is already running (recommended - allows to run every 5 mins)
+    */5 * * * * flock -n /tmp/reddit.lock -c "/path/to/reddit-rss-submit/index.js -u user -p pass"
 
 ## configure
 
