@@ -8,7 +8,7 @@ var request = require('request-promise');
 var async = require('async');
 var q = require('q');
 var fs = require('fs');
-var seen = require('./tmp/seen.json');
+var seen = require(__dirname + '/tmp/seen.json');
 var moment = require('moment');
 
 //arguments
@@ -41,7 +41,7 @@ function getLinks(url){
 
 function submitLink(item){
 	var def = q.defer();
-	seen = require('./tmp/seen.json');
+	seen = require(__dirname + '/tmp/seen.json');
 
 	if ( seen[item.link] ) {
 		if ( cmd.verbose ) console.log('Seen %s %s', item.link, item.pubDate);
@@ -84,7 +84,7 @@ function start(){
 				setTimeout(function(){
 					submitLink(item)
 						.then(function(data){
-							fs.writeFile('./tmp/seen.json', JSON.stringify(seen), function(err){
+							fs.writeFile(__dirname + '/tmp/seen.json', JSON.stringify(seen), function(err){
 								if ( err ) throw err;
 								cb();
 							});
