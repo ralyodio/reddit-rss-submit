@@ -81,8 +81,6 @@ function start(){
 			var secs = 0;
 
 			async.each(items, function(item, cb){
-				secs += cmd.throttle*60*1000; //every two minutes
-
 				setTimeout(function(){
 					submitLink(item)
 						.then(function(data){
@@ -95,6 +93,8 @@ function start(){
 							cb(err);
 						});
 				}, secs);
+
+				secs += cmd.throttle*60*1000; //every x minutes
 			}, function(err){
 				if ( err ) {
 					console.error(err);
