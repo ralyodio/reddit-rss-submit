@@ -10,15 +10,23 @@ var q = require('q');
 var fs = require('fs');
 var seen = require(__dirname + '/tmp/seen.json');
 var moment = require('moment');
+var winston = require('winston');
+
+var logger = new (winston.Logger)({
+	transports: [
+		new (winston.transports.Console)(),
+		new (winston.transports.File)({ filename: __dirname + '/tmp/run.log' })
+	]
+});
+
 
 //arguments
 cmd
 	.option('-u, --user [string]', 'Username for reddit')
 	.option('-p, --pass [string]', 'Password for reddit')
 	.option('-v, --verbose', 'A value that can be increased', increaseVerbosity, 0)
-	.option('-t, --throttle [integer]', 'Number of minutes between submissions', 10)
+	.option('-t, --throttle [n]', 'Number of minutes between submissions', 10)
 	.parse(process.argv);
-
 
 start();
 
@@ -44,7 +52,7 @@ function submitLink(item){
 	seen = require(__dirname + '/tmp/seen.json');
 
 	if ( seen[item.link] ) {
-		if ( cmd.verbose ) console.log('Seen %s %s', item.link, item.pubDate);
+		if ( cmd.verbose ) logger.log('info', 'Seen %s %s', item.link, item.pubDate);
 
 		def.resolve();
 		return def.promise;
@@ -53,7 +61,7 @@ function submitLink(item){
 	seen[item.link] = true;
 
 	if ( cmd.verbose ) {
-		console.log('Submitting: %s, %s, %s', item.title, item.link, item.pubDate);
+		logger.log('info', 'Submitting: %s, %s, %s', item.title, item.link, item.pubDate);
 	}
 
 	return reddit('/api/submit').post({
@@ -97,21 +105,21 @@ function start(){
 				secs += cmd.throttle*60*1000; //every x minutes
 			}, function(err){
 				if ( err ) {
-					console.error(err);
+					logger.error(err);
 					return def.reject(err);
 				}
 
-				if ( cmd.verbose ) console.log('Done submitting links');
+				if ( cmd.verbose ) logger.log('info', 'Done submitting links');
 				def.resolve();
 			});
 
 			return def.promise;
 		})
 		.then(function(data){
-			if ( cmd.verbose ) console.log('Done with all submissions.');
+			if ( cmd.verbose ) logger.log('info', 'Done with all submissions.');
 		})
 		.catch(function(err){
-			console.error(err);
+			logger.error(err);
 		});
 }
 
