@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 var Snoocore = require('snoocore');
-//var cfg = require('./config.json');
+var cfg = require('./config.json');
 var cmd = require('commander');
 var reddit = new Snoocore({ userAgent: 'snoocoreExample' });
 var request = require('request-promise');
@@ -16,7 +16,7 @@ cmd
 	.option('-u, --user [string]', 'Username for reddit')
 	.option('-p, --pass [string]', 'Password for reddit')
 	.option('-v, --verbose', 'A value that can be increased', increaseVerbosity, 0)
-	.option('-t, --throttle', 'Number of minutes between submissions', 10)
+	.option('-t, --throttle [integer]', 'Number of minutes between submissions', 10)
 	.parse(process.argv);
 
 
@@ -30,7 +30,7 @@ function increaseVerbosity(v, total) {
 function getLinks(url){
 	return request.get(url, { json: true })
 		.then(function(data){
-			data.value.items = data.value.items.sort(function(a, b){
+			return data.value.items.sort(function(a, b){
 				var aUnix = moment(new Date(a.pubDate)).unix();
 				var bUnix = moment(new Date(b.pubDate)).unix();
 
@@ -61,7 +61,7 @@ function submitLink(item){
 		url: item.link,
 		kind: 'link',
 		resubmit: false,
-		sr: 'testingground4bots' // The "fullname" for the "aww" subreddit.
+		sr: cfg.subreddit // The "fullname" for the "aww" subreddit.
 	});
 }
 
@@ -74,7 +74,7 @@ function start(){
 			return reddit('/api/me.json').get();
 		})
 		.then(function(){
-			return getLinks('http://pipes.yahoo.com/pipes/pipe.run?_id=2435ece48596a615e37a4373020e9291&_render=json');
+			return getLinks(cfg.feedUrl);
 		})
 		.then(function(items){
 			var def = q.defer();

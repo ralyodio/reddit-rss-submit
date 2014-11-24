@@ -25,6 +25,14 @@ Other OS (windows, linux) should install from source found at http://nodejs.org
     # add this line (runs every 5 minutes)
     */5 * * * * /usr/local/bin/node ~/path/to/reddit-rss-submit/index.js -u user -p pass
 
+## configure
+
+Only json is supported, best thing to convert RSS to JSON is to setup a Yahoo pipes over at http://pipes.yahoo.com
+You can can then grab the URL of your pipe's output as JSON.
+
+	cp config.sample.json config.json
+	
+Edit `config.json` to point to the URL of your feed (see yahoo pipes to convert to JSON)
 
 ## options
 
