@@ -26,7 +26,7 @@ Other OS (windows, linux) should install from source found at http://nodejs.org
     5 * * * * /usr/local/bin/node ~/path/to/reddit-rss-submit/index.js -u user -p pass
     
     # use flock to skip runs where script is already running (recommended - allows to run every 5 mins)
-    */5 * * * * flock -n /tmp/reddit.lock -c "/path/to/reddit-rss-submit/index.js -u user -p pass"
+    */5 * * * * flock -n /tmp/reddit.lock -c "/usr/local/bin/node /path/to/reddit-rss-submit/index.js -u user -p pass"
 
 ## configure
 
