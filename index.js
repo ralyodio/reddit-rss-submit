@@ -19,13 +19,15 @@ var logger = new (winston.Logger)({
 	]
 });
 
-
 //arguments
 cmd
 	.option('-u, --user [string]', 'Username for reddit')
 	.option('-p, --pass [string]', 'Password for reddit')
+	.option('-r, --filter [string]', 'A keyword to filter on the feed', cfg.filter)
+	.option('-f, --force', 'Ignore previous runs, force')
+	.option('-s, --subreddit [string]', 'A subreddit to post to.', cfg.subreddit)
+	.option('-t, --throttle [n]', 'Number of minutes between submissions', cfg.throttle)
 	.option('-v, --verbose', 'A value that can be increased', increaseVerbosity, 0)
-	.option('-t, --throttle [n]', 'Number of minutes between submissions', 10)
 	.parse(process.argv);
 
 start();
@@ -38,6 +40,8 @@ function increaseVerbosity(v, total) {
 function getLinks(url){
 	return request.get(url, { json: true })
 		.then(function(data){
+			var item;
+			var newItemIdx;
 			var items = data.value.items.sort(function(a, b){
 				var aUnix = moment(new Date(a.pubDate)).unix();
 				var bUnix = moment(new Date(b.pubDate)).unix();
@@ -45,23 +49,34 @@ function getLinks(url){
 				return bUnix - aUnix;
 			});
 
-			//only return one for now
-			return items.slice(0, 1);
+			//if item has been seen, remove it from the list
+			for ( var i= 0, l=items.length; i<l; i++ ){
+				newItemIdx = i;
+				item = items[i];
+
+				if ( !seen[item.link] ) {
+					logger.log('info', 'Not seen, using link: %s -- %s', item.title, item.link);
+					break;
+				}
+
+				logger.log('warn', 'Skipping (seen) %s -- %s', item.title, item.link);
+			}
+
+			//only return one for now (the latest fresh one)
+			return items.slice(newItemIdx, newItemIdx+1);
 		});
 }
 
 function submitLink(item){
 	var def = q.defer();
-	seen = require(__dirname + '/tmp/seen.json');
+	//seen = require(__dirname + '/tmp/seen.json');
 
-	if ( seen[item.link] ) {
+	if ( !cmd.force && seen[item.link] ) {
 		if ( cmd.verbose ) logger.log('info', 'Seen %s %s', item.link, item.pubDate);
 
 		def.resolve();
 		return def.promise;
 	}
-
-	seen[item.link] = true;
 
 	if ( cmd.verbose ) {
 		logger.log('info', 'Submitting: %s, %s, %s', item.title, item.link, item.pubDate);
@@ -73,7 +88,7 @@ function submitLink(item){
 		kind: 'link',
 		resubmit: false,
 		api_type: 'json',
-		sr: cfg.subreddit // The "fullname" for the "aww" subreddit.
+		sr: cmd.subreddit
 	});
 }
 
@@ -86,7 +101,13 @@ function start(){
 			return reddit('/api/me.json').get();
 		})
 		.then(function(me){
-			return getLinks(cfg.feedUrl);
+			var url = cfg.feedUrl;
+
+			if ( cmd.filter ) {
+				url += '&filter=' + cmd.filter;
+			}
+
+			return getLinks(url);
 		})
 		.then(function(items){
 			var def = q.defer();
@@ -96,6 +117,22 @@ function start(){
 				setTimeout(function(){
 					submitLink(item)
 						.then(function(data){
+							data = data && data.json;
+
+							if ( data ) {
+								if ( data.errors[0][0] === 'QUOTA_FILLED' ) {
+									logger.log('warn', data.errors[0].join(' '));
+								} else if ( data.ratelimit ) {
+									logger.log('warn', 'rate limit hit: try again in %s mins', data.ratelimit/60);
+								} else if (data.data.url){
+									logger.log('info', 'submitted to page: %s', data.data.url);
+
+									//it was submitted, mark as seen
+									seen[item.link] = true;
+								}
+							}
+
+
 							fs.writeFile(__dirname + '/tmp/seen.json', JSON.stringify(seen), function(err){
 								if ( err ) throw err;
 								cb();
@@ -126,5 +163,3 @@ function start(){
 			logger.error(err);
 		});
 }
-
-
