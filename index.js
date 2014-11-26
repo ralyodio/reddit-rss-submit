@@ -3,7 +3,7 @@
 var Snoocore = require('snoocore');
 var cfg = require('./config.json');
 var cmd = require('commander');
-var reddit = new Snoocore({ userAgent: 'snoocoreExample' });
+var reddit = new Snoocore({ userAgent: 'reddit-rss-submit/1.0' });
 var request = require('request-promise');
 var async = require('async');
 var q = require('q');
@@ -38,12 +38,15 @@ function increaseVerbosity(v, total) {
 function getLinks(url){
 	return request.get(url, { json: true })
 		.then(function(data){
-			return data.value.items.sort(function(a, b){
+			var items = data.value.items.sort(function(a, b){
 				var aUnix = moment(new Date(a.pubDate)).unix();
 				var bUnix = moment(new Date(b.pubDate)).unix();
 
 				return bUnix - aUnix;
 			});
+
+			//only return one for now
+			return items.slice(0, 1);
 		});
 }
 
@@ -69,6 +72,7 @@ function submitLink(item){
 		url: item.link,
 		kind: 'link',
 		resubmit: false,
+		api_type: 'json',
 		sr: cfg.subreddit // The "fullname" for the "aww" subreddit.
 	});
 }
@@ -81,7 +85,7 @@ function start(){
 		.then(function(loginData){
 			return reddit('/api/me.json').get();
 		})
-		.then(function(){
+		.then(function(me){
 			return getLinks(cfg.feedUrl);
 		})
 		.then(function(items){
