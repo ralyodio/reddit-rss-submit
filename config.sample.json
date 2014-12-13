@@ -1,6 +1,24 @@
 {
 	"feedUrl": "http://pipes.yahoo.com/pipes/pipe.run?_id=2435ece48596a615e37a4373020e9291&_render=json",
-	"subreddit": "bottest",
-	"filter": "obama",
+	"subreddit": "news",
+	"filter": "election",
+	"multi": [
+		{
+			"filter": "dogecoin",
+			"subreddit": "dogecoin"
+		},
+		{
+			"filter": "new+york+yankees",
+			"subreddit": "yankees"
+		},
+		{
+			"filter": "bittorrent",
+			"subreddit": "bittorrent"
+		},
+		{
+			"filter": "elections",
+			"subreddit": "news"
+		}
+	],
 	"throttle": 10
 }
