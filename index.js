@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 var Snoocore = require('snoocore');
+var ProgressBar = require('progress');
 var cfg = require('./config.json');
 var cmd = require('commander');
 var reddit = new Snoocore({ userAgent: 'reddit-rss-submit/1.0' });
@@ -19,6 +20,8 @@ var logger = new (winston.Logger)({
 	]
 });
 
+var intv = {};
+
 //arguments
 cmd
 	.option('-u, --user [string]', 'Username for reddit')
@@ -28,17 +31,17 @@ cmd
 	.option('-s, --subreddit [string]', 'A subreddit to post to.', cfg.subreddit)
 	.option('-t, --throttle [n]', 'Number of minutes between submissions', cfg.throttle)
 	.option('-v, --verbose', 'A value that can be increased', increaseVerbosity, 0)
+	.option('-m, --multi', 'Use multi submission configuration')
 	.parse(process.argv);
 
 start();
-
 
 function increaseVerbosity(v, total) {
 	return total + 1;
 }
 
-function getLinks(url){
-	return request.get(url, { json: true })
+function getFeedUrl(feedItem){
+	return request.get(feedItem.feedUrl, { json: true })
 		.then(function(data){
 			var item;
 			var newItemIdx;
@@ -56,6 +59,13 @@ function getLinks(url){
 
 				if ( !seen[item.link] ) {
 					logger.log('info', 'Not seen, using link: %s -- %s', item.title, item.link);
+
+					//save query info to result
+					item.subreddit = feedItem.subreddit;
+					item.feedUrl = feedItem.feedUrl;
+					item.filter = feedItem.filter;
+					//seen[item.link] =  true;
+
 					break;
 				}
 
@@ -64,6 +74,22 @@ function getLinks(url){
 
 			//only return one for now (the latest fresh one)
 			return items.slice(newItemIdx, newItemIdx+1);
+		});
+}
+
+function getLinks(feedItems){
+	var promises = feedItems.map(getFeedUrl);
+
+	return q.all(promises)
+		.then(function(arguments){
+			var items = [];
+
+			//flatten list
+			items = arguments.reduce(function(a, b){
+				return a.concat(b);
+			});
+
+			return items;
 		});
 }
 
@@ -79,7 +105,8 @@ function submitLink(item){
 	}
 
 	if ( cmd.verbose ) {
-		logger.log('info', 'Submitting: %s, %s, %s', item.title, item.link, item.pubDate);
+		logger.log('info', 'Submitting: %s, %s', item.title, item.pubDate);
+		logger.log('info', 'to reddit: %s: %s - %s', item.filter, item.subreddit, item.link)
 	}
 
 	return reddit('/api/submit').post({
@@ -88,9 +115,28 @@ function submitLink(item){
 		kind: 'link',
 		resubmit: false,
 		api_type: 'json',
-		sr: cmd.subreddit
+		sr: item.subreddit
 	});
 }
+
+function progressBar(){
+	if ( intv.countdown ) clearInterval(intv.countdown);
+
+	var total = cmd.throttle*60*10 - 100; //reduce by 10 seconds
+	var bar = new ProgressBar(':bar', { total: total });
+
+	logger.log('info', 'Waiting for %d minutes', cmd.throttle);
+
+	intv.countdown = setInterval(function(){
+		bar.tick();
+
+		if (bar.complete) {
+			logger.log('info', '\nsending next request...\n');
+			clearInterval(intv.countdown);
+		}
+	}, 100);
+}
+
 
 function start(){
 	reddit.login({
@@ -103,11 +149,33 @@ function start(){
 		.then(function(me){
 			var url = cfg.feedUrl;
 
-			if ( cmd.filter ) {
-				url += '&filter=' + cmd.filter;
+			var items = cmd.multi ? cfg.multi : [];
+
+			//multi mode
+			if ( cmd.multi && items.length ) {
+				items.map(function(item){
+					item.feedUrl = url + '&filter=' + item.filter;
+					item.subreddit = item.subreddit;
+
+					return item;
+				});
+			}
+			//single mode
+			else {
+				//command line option for filter
+				if ( cmd.filter ) {
+					items[0].feedUrl = url + '&filter=' + cmd.filter;
+					items[0].subreddit = cmd.subreddit ? cmd.subreddit : cfg.subreddit;
+				}
+				//config file
+				else {
+					items[0].feedUrl = url + '&filter=' + cfg.filter;
+					items[0].subreddit = cmd.subreddit ? cmd.subreddit : cfg.subreddit;
+				}
 			}
 
-			return getLinks(url);
+			logger.log('warn', 'Items to get links for', items);
+			return getLinks(items);
 		})
 		.then(function(items){
 			var def = q.defer();
@@ -115,26 +183,30 @@ function start(){
 
 			async.each(items, function(item, cb){
 				setTimeout(function(){
+
 					submitLink(item)
 						.then(function(data){
 							data = data && data.json;
 
+							logger.log('warn', 'response from submission to: %s', 'http://reddit.com/r/'+item.subreddit);
+
 							if ( data ) {
-								if ( data.errors[0][0] === 'QUOTA_FILLED' ) {
+								if ( data.errors ) {
 									logger.log('warn', data.errors[0].join(' '));
 								} else if ( data.ratelimit ) {
 									logger.log('warn', 'rate limit hit: try again in %s mins', data.ratelimit/60);
 								} else if (data.data.url){
 									logger.log('info', 'submitted to page: %s', data.data.url);
 
-									//it was submitted, mark as seen
+									//it was successfully submitted, mark as seen
 									seen[item.link] = true;
 								}
 							}
 
-
 							fs.writeFile(__dirname + '/tmp/seen.json', JSON.stringify(seen), function(err){
 								if ( err ) throw err;
+
+								progressBar();
 								cb();
 							});
 						})
@@ -145,6 +217,8 @@ function start(){
 
 				secs += cmd.throttle*60*1000; //every x minutes
 			}, function(err){
+				clearInterval(intv.countdown);
+
 				if ( err ) {
 					logger.error(err);
 					return def.reject(err);
