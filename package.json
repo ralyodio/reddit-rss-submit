@@ -1,6 +1,6 @@
 {
   "name": "reddit-rss-submit",
-  "version": "0.0.1",
+  "version": "1.0.1",
   "description": "Submit RSS links to Reddit.",
   "main": "index.js",
   "scripts": {

@@ -2,7 +2,7 @@
 
 var Snoocore = require('snoocore');
 var ProgressBar = require('progress');
-var cfg = require('./config.json');
+var cfg = require('./config.nofilter.json');
 var cmd = require('commander');
 var reddit = new Snoocore({ userAgent: 'reddit-rss-submit/1.0' });
 var request = require('request-promise');
@@ -193,7 +193,7 @@ function start(){
 						.then(function(data){
 							data = data && data.json;
 
-							logger.log('warn', 'response from submission to: %s', 'http://reddit.com/r/'+item.subreddit);
+//							logger.log('warn', 'response from submission to: %s', 'http://reddit.com/r/'+item.subreddit);
 
 							if ( data ) {
 								if ( data.errors ) {
@@ -211,7 +211,9 @@ function start(){
 							fs.writeFile(__dirname + '/tmp/seen.json', JSON.stringify(seen), function(err){
 								if ( err ) throw err;
 
-								progressBar();
+								if ( items.length ) {
+									progressBar(); //bug - happens even with 1 item right before exit?
+								}
 								cb();
 							});
 						})
@@ -225,7 +227,7 @@ function start(){
 				clearInterval(intv.countdown);
 
 				if ( err ) {
-					logger.error(err);
+					logger.log('error', err);
 					return def.reject(err);
 				}
 
@@ -239,6 +241,6 @@ function start(){
 			if ( cmd.verbose ) logger.log('info', 'Done with all submissions.');
 		})
 		.catch(function(err){
-			logger.error(err);
+			logger.log('error', err);
 		});
 }
