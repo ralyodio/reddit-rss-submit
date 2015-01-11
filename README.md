@@ -23,7 +23,7 @@ Other OS (windows, linux) should install from source found at http://nodejs.org
     crontab -e
 
     # add this line (runs every hour on hh:05)
-    5 * * * * /usr/local/bin/node ~/path/to/reddit-rss-submit/index.js -u user -p pass
+    5 * * * * /usr/local/bin/node ~/path/to/reddit-rss-submit/index.js -u user -p pass --multi
     
     # use flock to skip runs where script is already running (recommended - allows to run every 5 mins)
     */5 * * * * flock -n /tmp/reddit.lock -c "/usr/local/bin/node /path/to/reddit-rss-submit/index.js -u user -p pass"
@@ -39,9 +39,10 @@ Edit `config.json` to point to the URL of your feed (see yahoo pipes to convert 
 
 ## options
 
-- user: reddit uername
-- pass: reddit password
+- user: reddit uername (required)
+- pass: reddit password (required)
 - v: verbosity (`-vvv` to increase)
 - t: throttle (number of minutes between link submissions, defaults to 10)
+- m: multi (supports posting to multiple reddits)
 
 LICENSE: MIT
