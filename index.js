@@ -90,6 +90,9 @@ function getLinks(feedItems){
 			});
 
 			return items;
+		})
+		.catch(function(err){
+			logger.log('getLinks failed: error', err);
 		});
 }
 
@@ -154,7 +157,11 @@ function start(){
 			//multi mode
 			if ( cmd.multi && items.length ) {
 				items.map(function(item){
-					item.feedUrl = url + '&filter=' + item.filter;
+					if ( item.filter ) {
+						item.feedUrl = url + '&filter=' + item.filter;
+					} else {
+						item.feedUrl = url;
+					}
 					item.subreddit = item.subreddit;
 
 					return item;
@@ -162,16 +169,14 @@ function start(){
 			}
 			//single mode
 			else {
-				//command line option for filter
+				//check for filter
 				if ( cmd.filter ) {
 					items[0].feedUrl = url + '&filter=' + cmd.filter;
-					items[0].subreddit = cmd.subreddit ? cmd.subreddit : cfg.subreddit;
+				} else {
+					items[0].feedUrl = url;
 				}
-				//config file
-				else {
-					items[0].feedUrl = url + '&filter=' + cfg.filter;
-					items[0].subreddit = cmd.subreddit ? cmd.subreddit : cfg.subreddit;
-				}
+
+				items[0].subreddit = cmd.subreddit ? cmd.subreddit : cfg.subreddit;
 			}
 
 			logger.log('warn', 'Items to get links for', items);
