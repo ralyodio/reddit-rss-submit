@@ -2,7 +2,7 @@
 
 var Snoocore = require('snoocore');
 var ProgressBar = require('progress');
-var cfg = require('./config.json');
+var cfg = require('./config.nofilter.json');
 var cmd = require('commander');
 var reddit = new Snoocore({ userAgent: 'reddit-rss-submit/1.0' });
 var request = require('request-promise');
@@ -82,8 +82,6 @@ function getFeedUrl(feedItem){
 
 function getLinks(feedItems){
 	var promises = feedItems.map(getFeedUrl);
-
-	logger.log('warn', 'promises', promises);
 
 	return q.all(promises)
 		.then(function(arguments){
