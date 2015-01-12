@@ -2,7 +2,7 @@
 
 var Snoocore = require('snoocore');
 var ProgressBar = require('progress');
-var cfg = require('./config.nofilter.json');
+var cfg = require('./config.json');
 var cmd = require('commander');
 var reddit = new Snoocore({ userAgent: 'reddit-rss-submit/1.0' });
 var request = require('request-promise');
@@ -74,11 +74,16 @@ function getFeedUrl(feedItem){
 
 			//only return one for now (the latest fresh one)
 			return items.slice(newItemIdx, newItemIdx+1);
+		})
+		.catch(function(err){
+			logger.log('error', 'getFeedUrl err: ', arguments);
 		});
 }
 
 function getLinks(feedItems){
 	var promises = feedItems.map(getFeedUrl);
+
+	logger.log('warn', 'promises', promises);
 
 	return q.all(promises)
 		.then(function(arguments){
@@ -92,12 +97,14 @@ function getLinks(feedItems){
 			return items;
 		})
 		.catch(function(err){
-			logger.log('getLinks failed: error', err);
+			logger.log('error', 'getLinks failed: error', err);
 		});
 }
 
 function submitLink(item){
 	var def = q.defer();
+
+	logger.log('info', 'submitting: ', item);
 	//seen = require(__dirname + '/tmp/seen.json');
 
 	if ( !cmd.force && seen[item.link] ) {
@@ -147,6 +154,7 @@ function start(){
 		password: cmd.pass
 	})
 		.then(function(loginData){
+			logger.log('info', loginData);
 			return reddit('/api/me.json').get();
 		})
 		.then(function(me){
