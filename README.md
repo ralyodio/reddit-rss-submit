@@ -46,3 +46,7 @@ Edit `config.json` to point to the URL of your feed (see yahoo pipes to convert 
 - m: multi (supports posting to multiple reddits)
 
 LICENSE: MIT
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/chovy/reddit-rss-submit/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
